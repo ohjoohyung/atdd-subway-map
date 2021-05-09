@@ -14,5 +14,7 @@ public class Distance {
         }
     }
 
-
+    public int distance() {
+        return distance;
+    }
 }

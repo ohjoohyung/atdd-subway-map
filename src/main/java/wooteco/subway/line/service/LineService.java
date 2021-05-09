@@ -1,28 +1,65 @@
 package wooteco.subway.line.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import wooteco.subway.line.controller.dto.LineRequest;
 import wooteco.subway.line.domain.Line;
 import wooteco.subway.line.dao.LineDao;
+import wooteco.subway.section.dao.SectionDao;
+import wooteco.subway.section.domain.Distance;
+import wooteco.subway.section.domain.Section;
+import wooteco.subway.section.domain.Sections;
+import wooteco.subway.station.dao.StationDao;
+import wooteco.subway.station.domain.Station;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Service
 public class LineService {
     private final LineDao lineDao;
+    private final SectionDao sectionDao;
+    private final StationDao stationDao;
 
-    public LineService(LineDao lineDao) {
+    public LineService(LineDao lineDao, SectionDao sectionDao, StationDao stationDao) {
         this.lineDao = lineDao;
+        this.sectionDao = sectionDao;
+        this.stationDao = stationDao;
     }
 
-    public Line save(Line line) {
+    //
+//    public LineService(LineDao lineDao) {
+//        this.lineDao = lineDao;
+//    }
+
+    @Transactional
+    public Line save(LineRequest lineRequest) {
+        Line line = new Line(lineRequest.getName(), lineRequest.getColor());
         if (isDuplicatedName(line)) {
             throw new IllegalArgumentException(String.format("노선 이름이 중복되었습니다. 중복된 노선 이름 : %s", line.getName()));
         }
         if (isDuplicatedColor(line)) {
             throw new IllegalArgumentException(String.format("노선 색상이 중복되었습니다. 중복된 노선 색상 : %s", line.getColor()));
         }
-        return lineDao.save(line);
+        Line newLine = lineDao.save(line);
+        Station upStation = stationDao.findById(lineRequest.getUpStationId());
+        Station downStation = stationDao.findById(lineRequest.getDownStationId());
+        Section section = new Section(newLine.getId(), Arrays.asList(upStation, downStation), new Distance(lineRequest.getDistance()));
+        Section newSection = sectionDao.save(section);
+        return new Line(newLine.getId(), newLine.getName(), newLine.getColor(), new Sections(new ArrayList<>(Arrays.asList(newSection))));
     }
+
+
+//    public Line save(Line line) {
+//        if (isDuplicatedName(line)) {
+//            throw new IllegalArgumentException(String.format("노선 이름이 중복되었습니다. 중복된 노선 이름 : %s", line.getName()));
+//        }
+//        if (isDuplicatedColor(line)) {
+//            throw new IllegalArgumentException(String.format("노선 색상이 중복되었습니다. 중복된 노선 색상 : %s", line.getColor()));
+//        }
+//        return lineDao.save(line);
+//    }
 
     private boolean isDuplicatedName(Line line) {
         return lineDao.checkExistName(line.getName());
@@ -37,7 +74,9 @@ public class LineService {
     }
 
     public Line findById(Long id) {
-        return lineDao.findById(id);
+        Sections sections = sectionDao.findByLineId(id);
+        Line line = lineDao.findById(id);
+        return new Line(line.getId(), line.getName(), line.getColor(), sections);
     }
 
     public void update(Line line) {

@@ -23,8 +23,8 @@ class SectionTest {
     public void whenNotInputDistance() {
         assertThatThrownBy(() -> new Section(Arrays.asList(
                 new Station(1L, "강남역"),
-                new Station(2L, "역삼역"))
-                , null))
+                new Station(2L, "역삼역")),
+                null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("거리를 입력해주세요.");
     }
